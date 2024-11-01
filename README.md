@@ -1,6 +1,6 @@
 # W4153 Chat Service
 
-This microservice provides group chat and private messaging functionalities, utilizing WebSocket for real-time communication and MySQL for database management. The service allows user registration, login, group creation, and joining of chat groups.
+This microservice provides group chat and private messaging functionalities, utilizing WebSocket for real-time communication and MySQL for database management. The service allows user group creation, and joining of chat groups.
 
 ## Usage
 
