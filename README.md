@@ -42,7 +42,7 @@ This service offers the following endpoints:
 2. **WebSocket: `/ws/{username}`**  
    Establishes a WebSocket connection for real-time messaging, supporting private and group chats.
 
-3.**`/get-user-id`**
+3.**`/get-user-id`**  
    Find the user based on the userid.
 ## WebSocket Messaging
 
