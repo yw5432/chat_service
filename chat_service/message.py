@@ -1,23 +1,24 @@
 from database import db
 
 # 存储
-def log_message_to_db(sender, recipient=None, group_name=None, message=None):
+def log_message_to_db(sender, recipient, message):
     try:
         with db.cursor() as cursor:
             cursor.execute("select id from users where username = %s", (sender,))
-            sender_id = cursor.fetchone()[0]
+            sender_result = cursor.fetchone()
+            if sender_result is None:
+                print(f"Sender {sender} does not exist in the database.")
+                return
+            sender_id = sender_result[0]
 
-            if group_name:
-                cursor.execute("select id from chat_groups where group_name = %s", (group_name,))
-                group_id = cursor.fetchone()[0]
-                sql = "insert into messages (sender_id, group_id, message) values (%s, %s, %s)"
-                cursor.execute(sql, (sender_id, group_id, message))
-            else:
-                cursor.execute("select id from users where username = %s", (recipient,))
-                recipient_id = cursor.fetchone()[0]
-                sql = "insert into messages (sender_id, recipient_id, message) values (%s, %s, %s)"
-                cursor.execute(sql, (sender_id, recipient_id, message))
-
+            cursor.execute("select id from users where username = %s", (recipient,))
+            recipient_result = cursor.fetchone()
+            if recipient_result is None:
+                print(f"Recipient {recipient} does not exist in the database.")
+                return
+            recipient_id = recipient_result[0]
+            sql = "insert into messages (sender_id, recipient_id, message) values (%s, %s, %s)"
+            cursor.execute(sql, (sender_id, recipient_id, message))
             db.commit()
     except Exception as e:
         print(f"Error logging message to DB: {e}")
@@ -44,3 +45,16 @@ def get_chat_history(sender, recipient):
     except Exception as e:
         print(f"Error retrieving chat history: {e}")
         return []
+
+def get_user_by_id(userid):
+    try:
+        with db.cursor() as cursor:
+            cursor.execute("SELECT * FROM users WHERE id = %s", (userid,))
+            user = cursor.fetchone()
+            if user:
+                return {"id": user[0], "username": user[1]}  # Adjust fields as per your DB schema
+            else:
+                return None
+    except Exception as e:
+        print(f"Error retrieving user by ID: {e}")
+        return None

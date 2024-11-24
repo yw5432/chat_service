@@ -1,40 +1,25 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from models import User, GroupCreate, JoinRequest
-from user import register_user, authenticate_user
-from message import get_chat_history, log_message_to_db
-from group import create_group, join_group
+from message import get_chat_history, log_message_to_db, get_user_by_id
 from connection_manager import ConnectionManager
+from fastapi.middleware.cors import CORSMiddleware
+from middleware import LoggingMiddleware
 
 app = FastAPI()
 
 manager = ConnectionManager()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(LoggingMiddleware)
+
 @app.get("/")
 async def read_root():
-    return {"message": "Welcome to the Chat Service API!"}
-
-@app.post("/register")
-async def register(user: User):
-    result = register_user(user.username, user.password)
-    if result["status"] == "success":
-        return result
-    else:
-        raise HTTPException(status_code=500, detail=result["message"])
-
-@app.post("/login")
-async def login(user: User):
-    if authenticate_user(user.username, user.password):
-        return {"status": "success", "message": "Logged in successfully."}
-    else:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-
-@app.post("/create-group")
-async def create_group_endpoint(group: GroupCreate):
-    return create_group(group, manager)
-
-@app.post("/join-group")
-async def join_group_endpoint(request: JoinRequest):
-    return join_group(request, manager)
+    return {"message": "It is Chat Service API"}
 
 @app.get("/chat-history")
 async def chat_history(sender: str, recipient: str):
@@ -47,13 +32,16 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
     try:
         while True:
             data = await websocket.receive_text()
-            if data.startswith("group:"):
-                _, group_name, message = data.split(":", 2)
-                log_message_to_db(sender=username, group_name=group_name, message=message)
-                await manager.send_group_message(group_name, f"{username}: {message}")
-            else:
-                recipient, message = data.split(":", 1)
-                log_message_to_db(sender=username, recipient=recipient, message=message)
-                await manager.send_private_message(f"{username}: {message}", recipient)
+            recipient, message = data.split(":", 1)
+            log_message_to_db(sender=username, recipient=recipient, message=message)
+            await manager.send_private_message(f"{username}: {message}", recipient)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+@app.get("/get-user-id")
+async def get_user_id(userid: int):
+    user = get_user_by_id(userid)
+    if user:
+        return {"user": user}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
