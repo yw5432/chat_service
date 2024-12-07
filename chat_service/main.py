@@ -29,23 +29,13 @@ async def chat_history(sender_id: int, recipient_id: int):
     history = get_chat_history(sender_id, recipient_id)
     return {"history": history}
 
-@app.websocket("/ws/{token}")
+@app.websocket("/ws/{id}/{username}")
 async def websocket_endpoint(websocket: WebSocket, token: str):
     try:
-        headers = {"Authorization": f"Bearer {token}"}
-        response = httpx.get(f"{AUTH_SERVICE_URL}/auth/profile", headers=headers)
-        if response.status_code == 200:
-            user_info = response.json()
-            user_id = user_info.get("id")
-            username = user_info.get("username")
-        else:
-            raise HTTPException(status_code=401, detail="Invalid token")
-
-        # 连接 WebSocket
         await manager.connect(websocket, user_id)
     except Exception as e:
         await websocket.close()
-        raise HTTPException(status_code=401, detail="Authentication failed")
+        raise HTTPException(status_code=401, detail="Failed to connect WebSocket")
 
     try:
         while True:
