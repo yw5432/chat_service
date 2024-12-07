@@ -3,6 +3,9 @@ from message import get_chat_history, log_message_to_db, get_user_by_id
 from connection_manager import ConnectionManager
 from fastapi.middleware.cors import CORSMiddleware
 from middleware import LoggingMiddleware
+import httpx
+
+AUTH_SERVICE_URL = "https://user-auth-service-745799261495.us-east4.run.app"
 
 app = FastAPI()
 
@@ -19,22 +22,42 @@ app.add_middleware(LoggingMiddleware)
 
 @app.get("/")
 async def read_root():
-    return {"message": "It is Chat Service API"}
+    return {"message": "Here is Chat Service API"}
 
 @app.get("/chat-history")
-async def chat_history(sender: str, recipient: str):
-    history = get_chat_history(sender, recipient)
+async def chat_history(sender_id: int, recipient_id: int):
+    history = get_chat_history(sender_id, recipient_id)
     return {"history": history}
 
-@app.websocket("/ws/{username}")
-async def websocket_endpoint(websocket: WebSocket, username: str):
-    await manager.connect(websocket, username)
+@app.websocket("/ws/{token}")
+async def websocket_endpoint(websocket: WebSocket, token: str):
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        response = httpx.get(f"{AUTH_SERVICE_URL}/auth/profile", headers=headers)
+        if response.status_code == 200:
+            user_info = response.json()
+            user_id = user_info.get("id")
+            username = user_info.get("username")
+        else:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        # 连接 WebSocket
+        await manager.connect(websocket, user_id)
+    except Exception as e:
+        await websocket.close()
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
     try:
         while True:
             data = await websocket.receive_text()
-            recipient, message = data.split(":", 1)
-            log_message_to_db(sender=username, recipient=recipient, message=message)
-            await manager.send_private_message(f"{username}: {message}", recipient)
+            recipient_id, message = data.split(":", 1)
+
+            try:
+                recipient_id = int(recipient_id)
+                log_message_to_db(sender_id=user_id, recipient_id=recipient_id, message=message)
+                await manager.send_private_message(f"{username}: {message}", recipient_id)
+            except Exception as e:
+                await websocket.send_text(f"Error processing message: {str(e)}")
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 

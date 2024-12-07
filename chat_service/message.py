@@ -1,37 +1,19 @@
-from database import db
+from database import db_user_credential,db_user_chat
 
 # 存储
-def log_message_to_db(sender, recipient, message):
+def log_message_to_db(sender_id: int, recipient_id: int, message: str):
     try:
-        with db.cursor() as cursor:
-            cursor.execute("select id from users where username = %s", (sender,))
-            sender_result = cursor.fetchone()
-            if sender_result is None:
-                print(f"Sender {sender} does not exist in the database.")
-                return
-            sender_id = sender_result[0]
-
-            cursor.execute("select id from users where username = %s", (recipient,))
-            recipient_result = cursor.fetchone()
-            if recipient_result is None:
-                print(f"Recipient {recipient} does not exist in the database.")
-                return
-            recipient_id = recipient_result[0]
+        with db_user_chat.cursor() as cursor:
             sql = "insert into messages (sender_id, recipient_id, message) values (%s, %s, %s)"
             cursor.execute(sql, (sender_id, recipient_id, message))
-            db.commit()
+            db_user_chat.commit()
     except Exception as e:
         print(f"Error logging message to DB: {e}")
 
 # 获取记录
-def get_chat_history(sender, recipient):
+def get_chat_history(sender_id: int, recipient_id: int):
     try:
-        with db.cursor() as cursor:
-            cursor.execute("select id from users where username = %s", (sender,))
-            sender_id = cursor.fetchone()[0]
-            cursor.execute("select id from users where username = %s", (recipient,))
-            recipient_id = cursor.fetchone()[0]
-
+        with db_user_chat.cursor() as cursor:
             sql = (
                 "select sender_id, recipient_id, message, timestamp "
                 "from messages "
@@ -48,11 +30,11 @@ def get_chat_history(sender, recipient):
 
 def get_user_by_id(userid):
     try:
-        with db.cursor() as cursor:
-            cursor.execute("SELECT * FROM users WHERE id = %s", (userid,))
+        with db_user_credential.cursor() as cursor:
+            cursor.execute("SELECT id, username, email FROM users WHERE id = %s", (userid,))
             user = cursor.fetchone()
             if user:
-                return {"id": user[0], "username": user[1]}  # Adjust fields as per your DB schema
+                return {"id": user[0], "username": user[1], "email": user[2]}
             else:
                 return None
     except Exception as e:
