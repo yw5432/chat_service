@@ -1,5 +1,5 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from message import get_chat_history, log_message_to_db, get_user_by_id
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+from message import get_chat_history, log_message_to_db, get_user_by_id, get_user_by_email
 from connection_manager import ConnectionManager
 from fastapi.middleware.cors import CORSMiddleware
 from middleware import LoggingMiddleware
@@ -29,9 +29,14 @@ async def chat_history(sender_id: int, recipient_id: int):
     history = get_chat_history(sender_id, recipient_id)
     return {"history": history}
 
-@app.websocket("/ws/{id}/{username}")
-async def websocket_endpoint(websocket: WebSocket, token: str):
+@app.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: int):
     try:
+        user_info = get_user_by_id(user_id)
+        if not user_info:
+            raise HTTPException(status_code=404, detail="User not found")
+        username = user_info["username"]
+        
         await manager.connect(websocket, user_id)
     except Exception as e:
         await websocket.close()
@@ -56,5 +61,26 @@ async def get_user_id(userid: int):
     user = get_user_by_id(userid)
     if user:
         return {"user": user}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+@app.get("/get-user-email")
+async def get_user_email(email: str):
+    user = get_user_by_email(email)
+    if user:
+        return {"user": user}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+@app.get("/current-user")
+async def current_user(request: Request):
+    email = request.headers.get("Authorization")
+    if not email:
+        raise HTTPException(status_code=401, detail="Unauthorized: Missing email")
+
+    user = get_user_by_email(email)
+    if user:
+        return {"user_id": user["user_id"], "email": user["email"], "username": user["username"]}
     else:
         raise HTTPException(status_code=404, detail="User not found")

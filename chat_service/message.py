@@ -40,3 +40,17 @@ def get_user_by_id(userid):
     except Exception as e:
         print(f"Error retrieving user by ID: {e}")
         return None
+
+def get_user_by_email(email: str):
+    try:
+        with db_user_credential.cursor() as cursor:
+            cursor.execute("SELECT id, username, email FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+            if user:
+                return {"id": user[0], "username": user[1], "email": user[2]}
+            else:
+                return None
+    except Exception as e:
+        print(f"Error retrieving user by email: {e}")
+        return None
+
