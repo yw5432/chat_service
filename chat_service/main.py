@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
-from message import get_chat_history, log_message_to_db, get_user_by_id, get_user_by_email
+from message import get_chat_history, log_message_to_db, get_user_by_id, get_user_by_email, fetch_friend_list
 from connection_manager import ConnectionManager
 from fastapi.middleware.cors import CORSMiddleware
 from middleware import LoggingMiddleware
@@ -24,7 +24,7 @@ app.add_middleware(LoggingMiddleware)
 async def read_root():
     return {"message": "Here is Chat Service API"}
 
-@app.get("/chat-history")
+@app.get("/chat-history/{sender_id}/{recipient_id}")
 async def chat_history(sender_id: int, recipient_id: int):
     history = get_chat_history(sender_id, recipient_id)
     return {"history": history}
@@ -56,9 +56,9 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-@app.get("/get-user-id")
-async def get_user_id(userid: int):
-    user = get_user_by_id(userid)
+@app.get("/get-user-id/{user_id}")
+async def get_user_id(user_id: int):
+    user = get_user_by_id(user_id)
     if user:
         return {"user": user}
     else:
@@ -72,15 +72,7 @@ async def get_user_email(email: str):
     else:
         raise HTTPException(status_code=404, detail="User not found")
 
-
-@app.get("/current-user")
-async def current_user(request: Request):
-    email = request.headers.get("Authorization")
-    if not email:
-        raise HTTPException(status_code=401, detail="Unauthorized: Missing email")
-
-    user = get_user_by_email(email)
-    if user:
-        return {"user_id": user["user_id"], "email": user["email"], "username": user["username"]}
-    else:
-        raise HTTPException(status_code=404, detail="User not found")
+@app.get("/friend-list/{user_id}")
+async def get_friend_list(user_id: int):
+    friends = fetch_friend_list(user_id)
+    return {"friends": friends}

@@ -6,6 +6,7 @@ def log_message_to_db(sender_id: int, recipient_id: int, message: str):
         with db_user_chat.cursor() as cursor:
             sql = "insert into messages (sender_id, recipient_id, message) values (%s, %s, %s)"
             cursor.execute(sql, (sender_id, recipient_id, message))
+            add_friend_to_list(sender_id, recipient_id)
             db_user_chat.commit()
     except Exception as e:
         print(f"Error logging message to DB: {e}")
@@ -54,3 +55,30 @@ def get_user_by_email(email: str):
         print(f"Error retrieving user by email: {e}")
         return None
 
+def add_friend_to_list(user_id: int, friend_id: int):
+    try:
+        with db_user_chat.cursor() as cursor:
+            sql = """
+                INSERT IGNORE INTO friend_list (user_id, friend_id)
+                VALUES (%s, %s)
+            """
+            cursor.execute(sql, (user_id, friend_id))
+            cursor.execute(sql, (friend_id, user_id))
+    except Exception as e:
+        print(f"Error adding friend to list: {e}")
+
+def fetch_friend_list(user_id: int):
+    try:
+        with db_user_chat.cursor() as cursor:
+            sql = """
+                SELECT f.friend_id, u.username, u.email
+                FROM friend_list f
+                JOIN users u ON f.friend_id = u.id
+                WHERE f.user_id = %s
+            """
+            cursor.execute(sql, (user_id,))
+            friends = cursor.fetchall()
+            return [{"friend_id": friend[0], "username": friend[1], "email": friend[2]} for friend in friends]
+    except Exception as e:
+        print(f"Error fetching friend list: {e}")
+        return []
