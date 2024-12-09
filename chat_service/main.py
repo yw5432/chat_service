@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
-from message import get_chat_history, log_message_to_db, get_user_by_id, get_user_by_email, fetch_friend_list
+from message import get_chat_history, log_message_to_db, get_user_by_id, get_user_by_email, fetch_friend_list, log_user
 from connection_manager import ConnectionManager
 from fastapi.middleware.cors import CORSMiddleware
 from middleware import LoggingMiddleware
@@ -76,3 +76,20 @@ async def get_user_email(email: str):
 async def get_friend_list(user_id: int):
     friends = fetch_friend_list(user_id)
     return {"friends": friends}
+
+
+@app.post("/auth/google-login")
+async def google_login(request: Request):
+
+    try:
+        data = await request.json()
+        email = data.get("email")
+        username = data.get("username")
+
+        if not email or not username:
+            raise HTTPException(status_code=400, detail="Missing email or username")
+
+        log_user(email, username)
+        return {"message": "User logged successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to log user: {str(e)}")
