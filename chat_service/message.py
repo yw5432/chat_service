@@ -1,20 +1,20 @@
-from database import db_user_credential,db_user_chat
+from database import db
 
 # 存储
 def log_message_to_db(sender_id: int, recipient_id: int, message: str):
     try:
-        with db_user_chat.cursor() as cursor:
+        with db.cursor() as cursor:
             sql = "insert into messages (sender_id, recipient_id, message) values (%s, %s, %s)"
             cursor.execute(sql, (sender_id, recipient_id, message))
             add_friend_to_list(sender_id, recipient_id)
-            db_user_chat.commit()
+            db.commit()
     except Exception as e:
         print(f"Error logging message to DB: {e}")
 
 # 获取记录
 def get_chat_history(sender_id: int, recipient_id: int):
     try:
-        with db_user_chat.cursor() as cursor:
+        with db.cursor() as cursor:
             sql = (
                 "select sender_id, recipient_id, message, timestamp "
                 "from messages "
@@ -31,7 +31,7 @@ def get_chat_history(sender_id: int, recipient_id: int):
 
 def get_user_by_id(userid):
     try:
-        with db_user_credential.cursor() as cursor:
+        with db.cursor() as cursor:
             cursor.execute("SELECT id, username, email FROM users WHERE id = %s", (userid,))
             user = cursor.fetchone()
             if user:
@@ -44,7 +44,7 @@ def get_user_by_id(userid):
 
 def get_user_by_email(email: str):
     try:
-        with db_user_credential.cursor() as cursor:
+        with db.cursor() as cursor:
             cursor.execute("SELECT id, username, email FROM users WHERE email = %s", (email,))
             user = cursor.fetchone()
             if user:
@@ -57,7 +57,7 @@ def get_user_by_email(email: str):
 
 def add_friend_to_list(user_id: int, friend_id: int):
     try:
-        with db_user_chat.cursor() as cursor:
+        with db.cursor() as cursor:
             sql = """
                 INSERT IGNORE INTO friend_list (user_id, friend_id)
                 VALUES (%s, %s)
@@ -69,7 +69,7 @@ def add_friend_to_list(user_id: int, friend_id: int):
 
 def fetch_friend_list(user_id: int):
     try:
-        with db_user_chat.cursor() as cursor:
+        with db.cursor() as cursor:
             sql = """
                 SELECT f.friend_id, u.username, u.email
                 FROM friend_list f
@@ -82,3 +82,21 @@ def fetch_friend_list(user_id: int):
     except Exception as e:
         print(f"Error fetching friend list: {e}")
         return []
+
+def log_user(email: str, username: str):
+    try:
+        with db.cursor() as cursor:
+            cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+            if not user:
+                sql = "INSERT INTO users (email, username) VALUES (%s, %s)"
+                cursor.execute(sql, (email, username))
+                db.commit()
+                print(f"New user {email} added to the database.")
+            else:
+                sql = "UPDATE users SET username = %s WHERE email = %s"
+                cursor.execute(sql, (username, email))
+                db.commit()
+                print(f"User {email} updated.")
+    except Exception as e:
+        print(f"Error logging Google user: {e}")

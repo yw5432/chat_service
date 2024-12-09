@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from middleware import LoggingMiddleware
 import httpx
 
-AUTH_SERVICE_URL = "https://user-auth-service-745799261495.us-east4.run.app"
+AUTH_SERVICE_URL = "https:///ui-app-745799261495.us-east4.run.app"
 
 app = FastAPI()
 
