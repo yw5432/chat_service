@@ -1,9 +1,11 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+from strawberry.asgi import GraphQL
 from message import get_chat_history, log_message_to_db, get_user_by_id, get_user_by_email, fetch_friend_list, log_user
 from connection_manager import ConnectionManager
 from fastapi.middleware.cors import CORSMiddleware
 from middleware import LoggingMiddleware
-import httpx
+from mygraphql.schema import schema
+
 
 AUTH_SERVICE_URL = "https:///ui-app-745799261495.us-east4.run.app"
 
@@ -19,6 +21,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(LoggingMiddleware)
+
+graphql_app = GraphQL(schema)
+app.add_route("/graphql", graphql_app)
+app.add_websocket_route("/graphql", graphql_app)
 
 @app.get("/")
 async def read_root():
